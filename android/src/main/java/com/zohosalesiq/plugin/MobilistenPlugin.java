@@ -9,8 +9,10 @@ import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.zoho.commons.ChatComponent;
 import com.zoho.livechat.android.NotificationListener;
@@ -252,6 +254,16 @@ public class MobilistenPlugin implements FlutterPlugin, MethodCallHandler, Activ
                 finalResult.success(null);
                 break;
 
+            case "openChat":
+                @Nullable final String chatId = call.argument("chatId");
+                if (chatId == null) {
+                    ZohoSalesIQ.Chat.open();
+                } else {
+                    ZohoSalesIQ.Chat.open(chatId);
+                }
+                finalResult.success(null);
+                break;
+
             case "openChatWithID":
                 ZohoSalesIQ.Chat.open(LiveChatUtil.getString(call.arguments));
                 finalResult.success(null);
@@ -392,7 +404,7 @@ public class MobilistenPlugin implements FlutterPlugin, MethodCallHandler, Activ
                     public void onSuccess(ArrayList<VisitorChat> arrayList) {
                         List<Map<String, Object>> chatList = new ArrayList<Map<String, Object>>();
                         for (int i=0; i< arrayList.size(); i++) {
-                            Map<String, Object> chatMapObject = getChatMapObject(arrayList.get(i), false);
+                            Map<String, Object> chatMapObject = getChatMapObject(arrayList.get(i));
                             chatList.add(chatMapObject);
                         }
                         finalResult.success(chatList);
@@ -414,7 +426,7 @@ public class MobilistenPlugin implements FlutterPlugin, MethodCallHandler, Activ
                         public void onSuccess(ArrayList<VisitorChat> arrayList) {
                             List<Map<String, Object>> chatList = new ArrayList<Map<String, Object>>();
                             for (int i = 0; i < arrayList.size(); i++) {
-                                Map<String, Object> chatMapObject = getChatMapObject(arrayList.get(i), false);
+                                Map<String, Object> chatMapObject = getChatMapObject(arrayList.get(i));
                                 chatList.add(chatMapObject);
                             }
                             finalResult.success(chatList);
@@ -680,7 +692,8 @@ public class MobilistenPlugin implements FlutterPlugin, MethodCallHandler, Activ
 
     @Override
     public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding binding) {
-
+        this.application = binding.getActivity().getApplication();
+        this.activity = binding.getActivity();
     }
 
     @Override
@@ -688,7 +701,7 @@ public class MobilistenPlugin implements FlutterPlugin, MethodCallHandler, Activ
 
     }
 
-    public Map<String, Object> getChatMapObject(VisitorChat chat, boolean isEventStream){
+    public Map<String, Object> getChatMapObject(VisitorChat chat){
         Map<String, Object> visitorMap = new HashMap<String, Object>();
         visitorMap.put("id", chat.getChatID());         // No I18N
         visitorMap.put("unreadCount", chat.getUnreadCount());         // No I18N
@@ -709,11 +722,7 @@ public class MobilistenPlugin implements FlutterPlugin, MethodCallHandler, Activ
             visitorMap.put("lastMessageSender", chat.getLastMessageSender());         // No I18N
         }
         if (chat.getLastMessageTime() > 0){
-            if (isEventStream) {
-                visitorMap.put("lastMessageTime", LiveChatUtil.getString(chat.getLastMessageTime()));         // No I18N
-            } else {
-                visitorMap.put("lastMessageTime", LiveChatUtil.getDouble(chat.getLastMessageTime()));         // No I18N
-            }
+            visitorMap.put("lastMessageTime", LiveChatUtil.getDouble(chat.getLastMessageTime()));
         }
         if (chat.getAttenderName() != null) {
             visitorMap.put("attenderName", chat.getAttenderName());         // No I18N
@@ -938,7 +947,7 @@ public class MobilistenPlugin implements FlutterPlugin, MethodCallHandler, Activ
         @Override
         public void handleChatOpened(VisitorChat visitorChat) {
             Map<String, Object> eventMap = new HashMap<String, Object>();
-            Map<String, Object> chatMapObject = getChatMapObject(visitorChat, true);
+            Map<String, Object> chatMapObject = getChatMapObject(visitorChat);
             eventMap.put("eventName", SIQEvent.chatOpened);
             eventMap.put("chat", chatMapObject);
             if (chatEventSink != null) {
@@ -949,7 +958,7 @@ public class MobilistenPlugin implements FlutterPlugin, MethodCallHandler, Activ
         @Override
         public void handleChatClosed(VisitorChat visitorChat) {
             Map<String, Object> eventMap = new HashMap<String, Object>();
-            Map<String, Object> chatMapObject = getChatMapObject(visitorChat, true);
+            Map<String, Object> chatMapObject = getChatMapObject(visitorChat);
             eventMap.put("eventName", SIQEvent.chatClosed);
             eventMap.put("chat", chatMapObject);
             if (chatEventSink != null) {
@@ -960,7 +969,7 @@ public class MobilistenPlugin implements FlutterPlugin, MethodCallHandler, Activ
         @Override
         public void handleChatAttended(VisitorChat visitorChat) {
             Map<String, Object> eventMap = new HashMap<String, Object>();
-            Map<String, Object> chatMapObject = getChatMapObject(visitorChat, true);
+            Map<String, Object> chatMapObject = getChatMapObject(visitorChat);
             eventMap.put("eventName", SIQEvent.chatAttended);
             eventMap.put("chat", chatMapObject);
             if (chatEventSink != null) {
@@ -971,7 +980,7 @@ public class MobilistenPlugin implements FlutterPlugin, MethodCallHandler, Activ
         @Override
         public void handleChatMissed(VisitorChat visitorChat) {
             Map<String, Object> eventMap = new HashMap<String, Object>();
-            Map<String, Object> chatMapObject = getChatMapObject(visitorChat, true);
+            Map<String, Object> chatMapObject = getChatMapObject(visitorChat);
             eventMap.put("eventName", SIQEvent.chatMissed);
             eventMap.put("chat", chatMapObject);
             if (chatEventSink != null) {
@@ -982,7 +991,7 @@ public class MobilistenPlugin implements FlutterPlugin, MethodCallHandler, Activ
         @Override
         public void handleChatReOpened(VisitorChat visitorChat) {
             Map<String, Object> eventMap = new HashMap<String, Object>();
-            Map<String, Object> chatMapObject = getChatMapObject(visitorChat, true);
+            Map<String, Object> chatMapObject = getChatMapObject(visitorChat);
             eventMap.put("eventName", SIQEvent.chatReopened);
             eventMap.put("chat", chatMapObject);
             if (chatEventSink != null) {
@@ -993,7 +1002,7 @@ public class MobilistenPlugin implements FlutterPlugin, MethodCallHandler, Activ
         @Override
         public void handleRating(VisitorChat visitorChat) {
             Map<String, Object> eventMap = new HashMap<String, Object>();
-            Map<String, Object> chatMapObject = getChatMapObject(visitorChat, true);
+            Map<String, Object> chatMapObject = getChatMapObject(visitorChat);
             eventMap.put("eventName", SIQEvent.ratingReceived);
             eventMap.put("chat", chatMapObject);
             if (chatEventSink != null) {
@@ -1004,7 +1013,7 @@ public class MobilistenPlugin implements FlutterPlugin, MethodCallHandler, Activ
         @Override
         public void handleFeedback(VisitorChat visitorChat) {
             Map<String, Object> eventMap = new HashMap<String, Object>();
-            Map<String, Object> chatMapObject = getChatMapObject(visitorChat, true);
+            Map<String, Object> chatMapObject = getChatMapObject(visitorChat);
             eventMap.put("eventName",  SIQEvent.feedbackReceived);
             eventMap.put("chat", chatMapObject);
             if (chatEventSink != null) {
@@ -1015,7 +1024,7 @@ public class MobilistenPlugin implements FlutterPlugin, MethodCallHandler, Activ
         @Override
         public void handleQueuePositionChange(VisitorChat visitorChat) {
             Map<String, Object> eventMap = new HashMap<String, Object>();
-            Map<String, Object> chatMapObject = getChatMapObject(visitorChat, true);
+            Map<String, Object> chatMapObject = getChatMapObject(visitorChat);
             eventMap.put("eventName", SIQEvent.chatQueuePositionChange);
             eventMap.put("chat", chatMapObject);
             if (chatEventSink != null) {

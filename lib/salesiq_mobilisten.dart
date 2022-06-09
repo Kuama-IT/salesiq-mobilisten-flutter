@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/services.dart';
+import 'package:salesiq_mobilisten/src/events.dart';
+
+export 'src/events.dart';
 
 class ZohoSalesIQ {
   static MethodChannel _channel = const MethodChannel('salesiq_mobilisten');
@@ -22,6 +25,38 @@ class ZohoSalesIQ {
   /// Stream to receive events related to the knowledge base.
   static final articleEventChannel =
       EventChannel(_mobilistenArticleEventChannel).receiveBroadcastStream();
+
+  static final Stream<SIQEventBase> onEvent = Stream.multi((controller) {
+    void handleEvent(dynamic event) {
+      final json = event as Map<dynamic, dynamic>;
+
+      final typedEvent = SIQEventBase.fromJson(json);
+      controller.add(typedEvent);
+    }
+
+    final subscriptions = [
+      eventChannel.listen(handleEvent),
+      chatEventChannel.listen(handleEvent),
+      articleEventChannel.listen(handleEvent),
+    ];
+
+    controller
+      ..onPause = () {
+        for (final subscription in subscriptions) {
+          subscription.pause();
+        }
+      }
+      ..onResume = () {
+        for (final subscription in subscriptions) {
+          subscription.resume();
+        }
+      }
+      ..onCancel = () {
+        return Future.wait(subscriptions.map((subscription) {
+          return subscription.cancel();
+        }));
+      };
+  }, isBroadcast: true);
 
   /// Initializes Mobilisten using the [appKey] and [accessKey] generated for the bundle ID/package name of an application.
   static Future<void> init(String appKey, String accessKey) async {
@@ -121,9 +156,13 @@ class ZohoSalesIQ {
   }
 
   /// Opens the chat window for a specified chat if provided the [chatID].
-  static Future<void> openChatWithID(String chatID) async {
-    await _channel.invokeMethod('openChatWithID', chatID);
+  static Future<void> openChat({String? chatID}) async {
+    await _channel.invokeMethod('openChat', {'chatID': chatID});
   }
+
+  /// Opens the chat window for a specified chat if provided the [chatID].
+  @Deprecated('In favour of [openChat] method')
+  static Future<void> openChatWithID(String chatID) => openChat(chatID: chatID);
 
   /// Opens a new chat window for creating a new chat.
   static Future<void> openNewChat() async {

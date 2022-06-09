@@ -230,11 +230,11 @@ public class SwiftMobilistenPlugin: NSObject, FlutterPlugin {
             }
         case "show":
             ZohoSalesIQ.Chat.show()
-        case "openChatWithID":
-            if let id = argument as? String {
-                ZohoSalesIQ.Chat.show(referenceID: id, new: false)
-                result(nil)
-            }
+            result(nil)
+        case "openChat":
+            let chatId: String? = call.argument("chatId")
+            ZohoSalesIQ.Chat.show(referenceID: chatId, new: false)
+            result(nil)
         case "openNewChat":
             ZohoSalesIQ.Chat.show(new: true)
             result(nil)
@@ -616,6 +616,12 @@ extension FlutterMethodCall {
         return arguments as? [Any]
     }
     
+    func argument<T>(_ key: String) -> T? {
+        if let args = arguments as? [String: Any] {
+            return args[key] as? T
+        }
+        return nil
+    }
 }
 
 extension UIColor {
